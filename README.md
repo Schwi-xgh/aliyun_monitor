@@ -88,9 +88,7 @@
 2. 使用 **root 用户** 登录 Alpine 后，下载并执行脚本：
 
 ```bash
-wget -O install2.sh https://raw.githubusercontent.com/10000ge10000/aliyun_monitor/main/install2.sh
-chmod +x install2.sh
-./install2.sh
+wget -qO- https://raw.githubusercontent.com/10000ge10000/aliyun_monitor/main/install2.sh | sh
 ````
 
 3. 按脚本提示选择磁盘与分区，等待自动完成
@@ -109,9 +107,7 @@ chmod +x install2.sh
 使用 **root 用户** 执行：
 
 ```bash
-wget -N https://raw.githubusercontent.com/10000ge10000/aliyun_monitor/main/install.sh \
-&& chmod +x install.sh \
-&& ./install.sh
+wget -qO- https://raw.githubusercontent.com/10000ge10000/aliyun_monitor/main/install.sh | sh
 ```
 
 脚本会自动：
@@ -126,9 +122,7 @@ wget -N https://raw.githubusercontent.com/10000ge10000/aliyun_monitor/main/insta
 ## 🗑️ 卸载
 
 ```bash
-wget -N https://raw.githubusercontent.com/10000ge10000/aliyun_monitor/main/uninstall.sh \
-&& chmod +x uninstall.sh \
-&& ./uninstall.sh
+wget -qO- https://raw.githubusercontent.com/10000ge10000/aliyun_monitor/main/uninstall.sh | sh
 ```
 
 ---
