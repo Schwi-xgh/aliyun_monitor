@@ -9,7 +9,7 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 # GitHub 仓库 raw 地址
-REPO_URL="https://raw.githubusercontent.com/10000ge10000/aliyun_monitor/main/src"
+REPO_URL="https://raw.githubusercontent.com/Schwi-xgh/aliyun_monitor/refs/heads/main/src"
 TARGET_DIR="/opt/scripts"
 VENV_DIR="${TARGET_DIR}/venv"
 CONFIG_FILE="${TARGET_DIR}/config.json"
@@ -18,7 +18,7 @@ CONFIG_FILE="${TARGET_DIR}/config.json"
 CURRENT_USER_JSON=""
 
 echo -e "${BLUE}=============================================================${NC}"
-echo -e "${BLUE}    阿里云 CDT 流量监控 & 日报 一键部署/管理脚本 (修复增强版)  ${NC}"
+echo -e "${BLUE}    阿里云 CDT 流量监控 & 日报 一键部署/管理脚本 (PushPlus版)  ${NC}"
 echo -e "${BLUE}=============================================================${NC}"
 
 if [ "$EUID" -ne 0 ]; then
@@ -122,12 +122,25 @@ function run_full_install() {
         exit 1
     fi
 
-    # 6. 交互式配置 Telegram
-    echo -e "\n${BLUE}### 配置 Telegram ###${NC}"
-    echo -e "1. 联系 ${CYAN}@BotFather${NC} -> 创建机器人获取 Token"
-    echo -e "2. 联系 ${CYAN}@userinfobot${NC} -> 获取您的 Chat ID"
-    read -p "请输入 Telegram Bot Token: " TG_TOKEN
-    read -p "请输入 Telegram Chat ID: " TG_ID
+    # 6. 交互式配置 PushPlus
+    echo -e "\n${BLUE}### 配置 PushPlus 微信推送 ###${NC}"
+    echo -e "${CYAN}💡 提示: PushPlus 推送加使用指南${NC}"
+    echo "  1. 访问 ${CYAN}https://www.pushplus.plus/${NC} (或 http://www.pushplus.plus)"
+    echo "  2. 使用微信扫码登录"
+    echo "  3. 进入'我的Token'页面，复制您的专属Token"
+    echo "  4. 关注'PushPlus'微信公众号"
+    echo ""
+    echo "📌 可选参数说明："
+    echo "   - template: 消息模板类型 (html/json/markdown/markdown_v2/text)"
+    echo "   - channel: 发送渠道 (wechat/wxapp/channel)，默认 wechat"
+    echo ""
+    read -p "请输入 PushPlus Token: " PUSHPLUS_TOKEN
+    
+    echo -e "\n${CYAN}💡 可选配置 (直接回车使用默认值)${NC}"
+    read -p "消息模板 [html]: " PUSHPLUS_TEMPLATE
+    PUSHPLUS_TEMPLATE=${PUSHPLUS_TEMPLATE:-html}
+    
+    echo -e "${GREEN}已设置: Token=$PUSHPLUS_TOKEN | 模板=$PUSHPLUS_TEMPLATE${NC}\n"
 
     # 7. 配置阿里云对象
     USERS_JSON=""
@@ -150,9 +163,10 @@ function run_full_install() {
     # 8. 生成配置文件
     cat > "$CONFIG_FILE" <<EOF
 {
-    "telegram": {
-        "bot_token": "$TG_TOKEN",
-        "chat_id": "$TG_ID"
+    "pushplus": {
+        "token": "$PUSHPLUS_TOKEN",
+        "template": "$PUSHPLUS_TEMPLATE",
+        "channel": "wechat"
     },
     "users": [
         $USERS_JSON
