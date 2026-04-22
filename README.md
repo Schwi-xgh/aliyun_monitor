@@ -74,9 +74,9 @@
 1. 登录阿里云实例的 **VNC 控制台**
 2. 复制本项目中 `vnc.sh` 的全量内容。您可以直接一键复制执行以下命令来获取：
    ```bash
-   wget -qO- https://raw.githubusercontent.com/10000ge10000/aliyun_monitor/main/vnc.sh
+   wget -qO- https://raw.githubusercontent.com/Schwi-xgh/aliyun_monitor/refs/heads/main/vnc.sh
    ```
-   *(或者前往 GitHub 仓库直接打开 [vnc.sh](https://raw.githubusercontent.com/10000ge10000/aliyun_monitor/main/vnc.sh) 复制源码全文)*
+   *(或者前往 GitHub 仓库直接打开 [vnc.sh](https://raw.githubusercontent.com/Schwi-xgh/aliyun_monitor/refs/heads/main/vnc.sh) 复制源码全文)*
 3. 将代码 **完整粘贴到 VNC 界面并回车执行**。
 4. 初始完毕后即可按以下默认信息 SSH 远程登录：
    - **用户名**：`root`
@@ -88,7 +88,7 @@
 
 使用 **root 用户** 登录 Alpine 后，下载并执行脚本：
 ```bash
-wget -qO- https://raw.githubusercontent.com/10000ge10000/aliyun_monitor/main/install2.sh | sh
+wget -qO- https://raw.githubusercontent.com/Schwi-xgh/aliyun_monitor/refs/heads/main/install2.sh | sh
 ```
 
 ---
@@ -98,7 +98,7 @@ wget -qO- https://raw.githubusercontent.com/10000ge10000/aliyun_monitor/main/ins
 使用 **root 用户** 在任意连通互联网的 Linux 服务器或所监控的 ECS 本机上执行：
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/10000ge10000/aliyun_monitor/main/install.sh | sh
+wget -qO- https://raw.githubusercontent.com/Schwi-xgh/aliyun_monitor/refs/heads/main/install.sh | sh
 ```
 
 脚本将提供丝滑的交互式配置，自动：
@@ -114,7 +114,7 @@ wget -qO- https://raw.githubusercontent.com/10000ge10000/aliyun_monitor/main/ins
 ## ��️ 卸载
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/10000ge10000/aliyun_monitor/main/uninstall.sh | sh
+wget -qO- https://raw.githubusercontent.com/Schwi-xgh/aliyun_monitor/refs/heads/main/uninstall.sh | sh
 ```
 
 ---
