@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 import json
 import sys
 import logging
@@ -103,19 +103,33 @@ def set_start_failures(state, instance_id, count):
 def reset_start_failures(state, instance_id):
     state.setdefault(instance_id, {})['start_failures'] = 0
 
-# ---------- TG 通知 ----------
+# ---------- PushPlus 微信通知 ----------
 
-def send_tg_alert(tg_conf, title, message, color_status):
-    if not tg_conf.get('bot_token') or not tg_conf.get('chat_id'):
+def send_pushplus_alert(pushplus_conf, title, message, color_status):
+    """通过 PushPlus 发送微信通知"""
+    if not pushplus_conf.get('token'):
+        logger.warning("PushPlus token 未配置，跳过通知")
         return
+    
     icon = "\u2705" if color_status == "green" else "\U0001f6a8"
     try:
-        url = f"https://api.telegram.org/bot{tg_conf['bot_token']}/sendMessage"
-        text = f"{icon} *[{title}]*\n\n{message}"
-        data = {"chat_id": tg_conf['chat_id'], "text": text, "parse_mode": "Markdown"}
-        requests.post(url, json=data, timeout=5)
+        url = "http://www.pushplus.plus/send"
+        data = {
+            "token": pushplus_conf['token'],
+            "title": f"{icon} {title}",
+            "content": message,
+            "template": pushplus_conf.get('template', 'html'),
+            "channel": pushplus_conf.get('channel', 'wechat')
+        }
+        headers = {"Content-Type": "application/json"}
+        response = requests.post(url, json=data, headers=headers, timeout=10)
+        result = response.json()
+        if result.get('code') == 200:
+            logger.info(f"PushPlus 通知发送成功: {title}")
+        else:
+            logger.error(f"PushPlus 发送失败: {result.get('msg', '未知错误')}")
     except Exception as e:
-        logger.error(f"TG发送失败: {e}")
+        logger.error(f"PushPlus 发送异常: {e}")
 
 # ---------- 查询实例状态 ----------
 
@@ -131,7 +145,7 @@ def get_instance_status(client, instance_id):
 
 # ---------- 核心逻辑 ----------
 
-def check_and_act(user, tg_conf, state):
+def check_and_act(user, pushplus_conf, state):
     instance_id = user['instance_id']
     name        = user.get('name', instance_id)
     try:
@@ -197,11 +211,11 @@ def check_and_act(user, tg_conf, state):
                     logger.warning(f"[{name}] StartInstance API 调用失败: {err_msg}，"
                                    f"累计失败 {new_failures} 次")
                     if can_notify(state, instance_id, 'start_failed'):
-                        msg = (f"机器: {name}\n当前流量: {curr_gb:.2f}GB\n"
-                               f"⚠️ 启动 API 调用失败: {err_msg}\n"
-                               f"累计失败 {new_failures} 次，"
-                               f"脚本将每 {RESOURCE_RETRY_COOLDOWN//60} 分钟自动重试。")
-                        send_tg_alert(tg_conf, "启动失败告警", msg, "red")
+                        msg = f"机器: {name}<br>当前流量: {curr_gb:.2f}GB<br>" \
+                              f"⚠️ 启动 API 调用失败: {err_msg}<br>" \
+                              f"累计失败 {new_failures} 次，<br>" \
+                              f"脚本将每 {RESOURCE_RETRY_COOLDOWN//60} 分钟自动重试。"
+                        send_pushplus_alert(pushplus_conf, "启动失败告警", msg, "red")
                         mark_notified(state, instance_id, 'start_failed')
                     return
 
@@ -231,8 +245,8 @@ def check_and_act(user, tg_conf, state):
                     state.setdefault(instance_id, {}).pop('last_retry_ts', None)
                     logger.info(f"[{name}] 实例已恢复运行 ✅")
                     if can_notify(state, instance_id, 'resumed'):
-                        msg = f"机器: {name}\n当前流量: {curr_gb:.2f}GB\n动作: 恢复运行 ✅"
-                        send_tg_alert(tg_conf, "恢复监控", msg, "green")
+                        msg = f"机器: {name}<br>当前流量: {curr_gb:.2f}GB<br>动作: 恢复运行 ✅"
+                        send_pushplus_alert(pushplus_conf, "恢复监控", msg, "green")
                         mark_notified(state, instance_id, 'resumed')
                 else:
                     # 超时未启动或回落到 Stopped，计为一次失败
@@ -240,11 +254,11 @@ def check_and_act(user, tg_conf, state):
                     set_start_failures(state, instance_id, new_failures)
                     logger.warning(f"[{name}] 启动超时或被拒绝，累计失败 {new_failures} 次")
                     if can_notify(state, instance_id, 'start_failed'):
-                        msg = (f"机器: {name}\n当前流量: {curr_gb:.2f}GB\n"
-                               f"⚠️ 尝试启动但 {START_WAIT_TIMEOUT}s 内未变为 Running 状态，"
-                               f"累计失败 {new_failures} 次。\n"
-                               f"脚本将每 {RESOURCE_RETRY_COOLDOWN//60} 分钟自动重试，无需手动干预。")
-                        send_tg_alert(tg_conf, "启动失败告警", msg, "red")
+                        msg = f"机器: {name}<br>当前流量: {curr_gb:.2f}GB<br>" \
+                              f"⚠️ 尝试启动但 {START_WAIT_TIMEOUT}s 内未变为 Running 状态，<br>" \
+                              f"累计失败 {new_failures} 次。<br>" \
+                              f"脚本将每 {RESOURCE_RETRY_COOLDOWN//60} 分钟自动重试，无需手动干预。"
+                        send_pushplus_alert(pushplus_conf, "启动失败告警", msg, "red")
                         mark_notified(state, instance_id, 'start_failed')
 
             elif status == "Running":
@@ -263,15 +277,15 @@ def check_and_act(user, tg_conf, state):
                 stop_req.set_InstanceId(instance_id)
                 client.do_action_with_exception(stop_req)
                 if can_notify(state, instance_id, 'overlimit', OVERLIMIT_COOLDOWN):
-                    msg = f"机器: {name}\n当前流量: {curr_gb:.2f}GB\n动作: 已触发止损关机 \U0001f6d1"
-                    send_tg_alert(tg_conf, "流量预警", msg, "red")
+                    msg = f"机器: {name}<br>当前流量: {curr_gb:.2f}GB<br>动作: 已触发止损关机 🛑"
+                    send_pushplus_alert(pushplus_conf, "流量预警", msg, "red")
                     mark_notified(state, instance_id, 'overlimit')
             else:
                 # 已处于停止状态，每天提醒一次
                 logger.info(f"[{name}] 已停止止损 - {curr_gb:.2f}GB")
                 if can_notify(state, instance_id, 'overlimit', OVERLIMIT_COOLDOWN):
-                    msg = f"机器: {name}\n当前流量: {curr_gb:.2f}GB\n状态: 流量超标，已保持关机 \U0001f6d1"
-                    send_tg_alert(tg_conf, "流量超标提醒", msg, "red")
+                    msg = f"机器: {name}<br>当前流量: {curr_gb:.2f}GB<br>状态: 流量超标，已保持关机 🛑"
+                    send_pushplus_alert(pushplus_conf, "流量超标提醒", msg, "red")
                     mark_notified(state, instance_id, 'overlimit')
 
     except Exception as e:
@@ -281,7 +295,7 @@ def main():
     config = load_config()
     state  = load_state()
     for user in config.get('users', []):
-        check_and_act(user, config.get('telegram', {}), state)
+        check_and_act(user, config.get('pushplus', {}), state)
     save_state(state)
 
 if __name__ == "__main__":
