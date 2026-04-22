@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
+import os
 import sys
+import json
+import datetime
 import warnings
+import requests
 
 # 修正 urllib3 在 Python 3.12 下引发的 SNI 丢失问题
 try:
@@ -34,15 +38,30 @@ def load_config():
     with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
         return json.load(f)
 
-def send_tg_report(tg_conf, message):
-    if not tg_conf.get('bot_token') or not tg_conf.get('chat_id'):
+# ---------- PushPlus 微信推送 ----------
+def send_pushplus_report(pushplus_conf, title, content):
+    """通过 PushPlus 发送日报"""
+    if not pushplus_conf.get('token'):
+        print("PushPlus token 未配置，跳过发送")
         return
     try:
-        url = f"https://api.telegram.org/bot{tg_conf['bot_token']}/sendMessage"
-        data = {"chat_id": tg_conf['chat_id'], "text": message, "parse_mode": "Markdown"}
-        requests.post(url, json=data, timeout=10)
-    except:
-        pass
+        url = "http://www.pushplus.plus/send"
+        data = {
+            "token": pushplus_conf['token'],
+            "title": title,
+            "content": content,
+            "template": pushplus_conf.get('template', 'html'),
+            "channel": pushplus_conf.get('channel', 'wechat')
+        }
+        headers = {"Content-Type": "application/json"}
+        response = requests.post(url, json=data, headers=headers, timeout=10)
+        result = response.json()
+        if result.get('code') == 200:
+            print(f"PushPlus 日报发送成功")
+        else:
+            print(f"PushPlus 发送失败: {result.get('msg', '未知错误')}")
+    except Exception as e:
+        print(f"PushPlus 发送异常: {e}")
 
 def do_common_request(client, domain, version, action, params=None, method='POST', timeout=30, retries=3):
     for attempt in range(1, retries + 1):
@@ -70,12 +89,13 @@ def do_common_request(client, domain, version, action, params=None, method='POST
 def main():
     config = load_config()
     users = config.get('users', [])
-    tg_conf = config.get('telegram', {})
+    pushplus_conf = config.get('pushplus', {})
     
     report_lines = []
     today = datetime.datetime.now().strftime("%Y-%m-%d")
-    report_lines.append(f"📊 *[阿里云多账号 - 每日财报]*")
-    report_lines.append(f"📅 日期: {today}\n")
+    report_lines.append(f"<h2>📊 阿里云多账号 - 每日财报</h2>")
+    report_lines.append(f"<p>📅 日期: {today}</p>")
+    report_lines.append("<hr>")
 
     for user in users:
         try:
@@ -176,25 +196,31 @@ def main():
             if bill_amount > bill_limit: status_icon = "💸 扣费预警"
             if traffic_gb < 0: status_icon = "⚠️ 流量查询异常"
             
-            run_icon = "🟢" if status == "Running" else "🔴"
-            if status == "Stopped": run_icon = "⚫"
-            if status == "NotFound": run_icon = "❓"
+            run_icon = "🟢"
+            if status == "Running": run_icon = "🟢"
+            elif status == "Stopped": run_icon = "⚫"
+            elif status == "NotFound": run_icon = "❓"
+            else: run_icon = "🟡"
 
-            user_report = (
-                f"👤 *{user_name}* ({spec})\n"
-                f"   🖥️ 状态: {run_icon} {status}\n"
-                f"   🌐 IP: `{ip}`\n"
-                f"   📉 流量: {traffic_str}\n"
-                f"   💰 账单: *{bill_str}*\n"
-                f"   📝 评价: {status_icon}\n"
-            )
+            user_report = f"""
+<div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px;">
+    <h3>👤 {user_name} ({spec})</h3>
+    <ul style="list-style: none; padding-left: 0;">
+        <li>🖥️ 状态: {run_icon} {status}</li>
+        <li>🌐 IP: <code>{ip}</code></li>
+        <li>📉 流量: {traffic_str}</li>
+        <li>💰 账单: <b>{bill_str}</b></li>
+        <li>📝 评价: {status_icon}</li>
+    </ul>
+</div>
+"""
             report_lines.append(user_report)
 
         except Exception as e:
-            report_lines.append(f"❌ *{user.get('name', 'Unknown')}* Error: {str(e)}\n")
+            report_lines.append(f"<div style='color: red;'>❌ {user.get('name', 'Unknown')} Error: {str(e)}</div>")
 
-    final_msg = "\n".join(report_lines)
-    send_tg_report(tg_conf, final_msg)
+    final_content = "\n".join(report_lines)
+    send_pushplus_report(pushplus_conf, f"📊 阿里云每日财报 - {today}", final_content)
 
 if __name__ == "__main__":
     main()
